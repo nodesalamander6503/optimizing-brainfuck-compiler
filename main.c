@@ -1,7 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
-
-#define swap(a, b) { a = a ^ b; b = a ^ b; a = a ^ b; };
+#include <stdbool.h>
 
 enum op_type {
 	op_type_inc,
@@ -75,6 +74,7 @@ int main(int argc, char ** argv) {
 		};
 	}
 #undef add_op
+	/*
 	// 2. precompute jumps
 	for(int i = 0; i < program_len; i ++) {
 		switch(program[i].type) {
@@ -103,6 +103,7 @@ int main(int argc, char ** argv) {
 			default: break;
 		}
 	}
+	*/
 	// 3. slight optimizations
 	optimize(&program, &program_len);
 	// 4. eval
@@ -146,7 +147,7 @@ int main(int argc, char ** argv) {
 					dbprintf("fail right jump\n");
 					break;
 				}
-				/*
+				// /*
 				int count = 1;
 				while(count > 0) {
 					pc ++;
@@ -154,8 +155,8 @@ int main(int argc, char ** argv) {
 					if(program[pc].type == op_type_lbrac) { count ++; }
 					if(program[pc].type == op_type_rbrac) { count --; }
 				}
-				*/
-				pc = program[pc].v;
+				//*/
+				//pc = program[pc].v;
 				dbprintf("succeed right jump\n");
 			} break;
 			case op_type_rbrac: {
@@ -163,7 +164,7 @@ int main(int argc, char ** argv) {
 					dbprintf("fail left jump\n");
 					break;
 				}
-				/*
+				// /*
 				int count = 1;
 				while(count > 0) {
 					pc --;
@@ -171,8 +172,8 @@ int main(int argc, char ** argv) {
 					if(program[pc].type == op_type_lbrac) { count --; }
 					if(program[pc].type == op_type_rbrac) { count ++; }
 				}
-				*/
-				pc = program[pc].v;
+				//*/
+				//pc = program[pc].v;
 				dbprintf("succeed left jump\n");
 			} break;
 			case op_type_input: {
@@ -198,14 +199,14 @@ int main(int argc, char ** argv) {
  * It'll fill B, B_len in on it's own; expects these to be not yet initialized
  * It'll annotate `edited` and will always write there
  */
-/*void optimize_once(struct op * a, int a_len, struct op ** B, int * B_len, bool * edited) {
+void optimize_once(struct op * a, int a_len, struct op ** B, int * B_len, bool * edited) {
 	struct op * b = NULL;
 	int b_len = 0;
 	int b_alloc = 4;
 	b = malloc(sizeof(struct op) * b_alloc);
 	if(b == NULL) { panic(panic_oom); }
 	*edited = 0;
-#define add_to_b(type, v) { \
+#define add_to_b(_type, _v) { \
 	b_len ++; \
 	if(b_alloc < b_len) {\
 		b_alloc *= 2;\
@@ -215,8 +216,8 @@ int main(int argc, char ** argv) {
 		b = realloc(b, sizeof(struct op) * b_alloc);\
 		if(b == NULL) { panic(panic_oom); }\
 	}\
-	b[b_len - 1].type = (type);\
-	b[b_len - 1].v = (v);\
+	b[b_len - 1].type = (_type);\
+	b[b_len - 1].v = (_v);\
 }
 	int i = 0;
 	while(i < a_len) {
@@ -227,14 +228,14 @@ int main(int argc, char ** argv) {
 		int  fold_mod = 0;
 		// bool fold_use = 0; // will be generalized to enum if needed later
 		switch(fold_of) {
-			case op_inc: {
+			case op_type_inc: {
 				foldable = 1;
-				fold_to = op_add;
+				fold_to = op_type_add;
 				fold_mod = 1;
 			} break;
-			case op_dec: {
+			case op_type_dec: {
 				foldable = 1;
-				fold_to = op_add;
+				fold_to = op_type_add;
 				fold_mod = -1;
 			} break;
 			default: {
@@ -265,18 +266,15 @@ int main(int argc, char ** argv) {
 	}
 	*B = b;
 	*B_len = b_len;
-}*/
+}
 
 void optimize(struct op ** p, int * p_len) {
-	return;
-	/*
 	struct op * B;
 	int B_len;
 	bool edited = 0;
-	optimize_once(p, p_len, &B, &B_len, &edited);
-	free(*p); // this right?
+	optimize_once(*p, *p_len, &B, &B_len, &edited);
+	free(*p);
 	*p = B;
 	*p_len = B_len;
-	*/
 }
 
