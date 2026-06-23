@@ -1,8 +1,8 @@
 # Brainfuck Compiler / Interpreter (IR-based)
 
-This is a single-file Brainfuck interpreter written in C with a simple intermediate representation (IR) and an experimental optimization pass.
+This is a single-file Brainfuck interpreter and compiler written in C with a simple intermediate representation (IR) and an experimental optimization pass.
 
-The pipeline is simple. Brainfuck source is parsed into a simple IR (represented by `struct op`), which then goes through an optional optimization pass, and is finally executed via interpreter.
+The pipeline is simple. Brainfuck source is parsed into a simple IR (represented by `struct op`), which then goes through an optional optimization pass, and is finally executed via interpreter, or compiled into C code.
 
 The IR is currently tape-based and supports the following operations:
 - cell increment/decrement
@@ -18,6 +18,9 @@ Optimization is currently optional and only performs local transformations (e.g.
 - Intermediate representation (IR) layer
 - Precomputed jump addresses (as an alternative to scanning until a matching `[` or `]` is found) -- CURRENTLY DISABLED
 - Basic optimization pass (run-length folding)
+    - Convert sequential increments or decrements to a single add instruction
+    - Convert sequential move-lefts or move-rights to a single move instruction
+- Compilation
 
 # Limitations
 

@@ -10,6 +10,7 @@ enum op_type {
 	op_type_rbrac,
 	op_type_mvl,
 	op_type_mvr,
+	op_type_mov,
 	op_type_input,
 	op_type_output,
 };
@@ -39,6 +40,8 @@ void panic(enum panics p) {
 }
 
 void optimize(struct op **, int *);
+
+void compile(struct op *, int);
 
 int main(int argc, char ** argv) {
 	char * code = "-[------->+<]>-.-[->+++++<]>++.+++++++..+++.[->+++++<]>+.------------.+[->++<]>.---[----->+<]>-.+++[->+++<]>++.++++++++.+++++.--------.-[--->+<]>--.+[->+++<]>+.++++++++.+[++>---<]>-.";
@@ -106,7 +109,9 @@ int main(int argc, char ** argv) {
 	*/
 	// 3. slight optimizations
 	optimize(&program, &program_len);
-	// 4. eval
+	// 4. compile
+	compile(program, program_len);
+	// 5. eval
 	unsigned char * mem = calloc(1024, 1); // zeroed
 	if(mem == NULL) { panic(panic_oom); }
 	//for(int i = 0; i < 1024; i ++) { mem[i] = 0; }
@@ -141,6 +146,16 @@ int main(int argc, char ** argv) {
 					mp -= 1024;
 				}
 				dbprintf("slide right\n");
+			} break;
+			case op_type_mov: {
+				mp += program[pc].v;
+				if(mp < 0) {
+					mp += 1024;
+				}
+				if(mp >= 1024) {
+					mp -= 1024;
+				}
+				dbprintf("slide\n");
 			} break;
 			case op_type_lbrac: {
 				if(mem[mp] != 0) {
@@ -238,6 +253,16 @@ void optimize_once(struct op * a, int a_len, struct op ** B, int * B_len, bool *
 				fold_to = op_type_add;
 				fold_mod = -1;
 			} break;
+			case op_type_mvl: {
+				foldable = 1;
+				fold_to = op_type_mov;
+				fold_mod = 1;
+			} break;
+			case op_type_mvr: {
+				foldable = 1;
+				fold_to = op_type_mov;
+				fold_mod = -1;
+			} break;
 			default: {
 				foldable = 0;
 				// this is degenerate-ish case, i guess; i technically could interrupt the for loop here with `continue;` but i want to not do that, in case i want to add more stuff later
@@ -276,5 +301,67 @@ void optimize(struct op ** p, int * p_len) {
 	free(*p);
 	*p = B;
 	*p_len = B_len;
+}
+
+void compile(struct op * program, int len) {
+	FILE * file = fopen("compiled-bf.c", "w+");
+	fprintf(file, "#include <stdio.h>\n#include <stdlib.h>\nint main(int argc, char ** argv) {\nchar * tape = calloc(1024, 1);\nint tp = 0;\nint c;\n");
+	int label_counter = 0;
+	int * label_stack = NULL;
+	int label_stack_height = 0;
+	int label_stack_allocated = 0;
+#define append_to_label_stack(label) { \
+	if(label_stack_height >= label_stack_allocated) { \
+		int realloc_to = label_stack_allocated == 0 ? 2 : label_stack_allocated * 2; \
+		label_stack = realloc(label_stack, sizeof(int) * realloc_to); \
+		if(label_stack == NULL) { panic(panic_oom); } \
+		label_stack_allocated = realloc_to; \
+	} \
+	label_stack[label_stack_height++] = (label); \
+}
+#define pop_from_label_stack() (label_stack[--label_stack_height])
+	for(int i = 0; i < len; i ++) {
+		switch(program[i].type) {
+			case op_type_inc: {
+				fprintf(file, "tape[tp]++;\n");
+			} break;
+			case op_type_dec: {
+				fprintf(file, "tape[tp]--;\n");
+			} break;
+			case op_type_add: {
+				fprintf(file, "tape[tp]+=%d;", program[i].v);
+			} break;
+			case op_type_mvl: {
+				fprintf(file, "tp--;\n");
+			} break;
+			case op_type_mvr: {
+				fprintf(file, "tp++;\n");
+			} break;
+			case op_type_mov: {
+				fprintf(file, "tp+=%d;", program[i].v);
+			} break;
+			case op_type_lbrac: {
+				fprintf(file, "_l%d:\n", label_counter);
+				fprintf(file, "if(tape[tp] == 0) { goto _r%d; }\n", label_counter);
+				append_to_label_stack(label_counter);
+				label_counter ++;
+			} break;
+			case op_type_rbrac: {
+				int x = pop_from_label_stack();
+				fprintf(file, "_r%d:\n", x);
+				fprintf(file, "if(tape[tp] != 0) { goto _l%d; }\n", x);
+			} break;
+			case op_type_input: {
+				fprintf(file, "int c = getchar();\n");
+				fprintf(file, "tape[tp] = (c == EOF) ? 0 : (unsigned char) c;\n");
+			} break;
+			case op_type_output: {
+				fprintf(file, "printf(\"%%c\", tape[tp]);");
+			} break;
+		}
+	}
+	fprintf(file, "return 0;\n}\n\n");
+	fflush(file);
+	fclose(file);
 }
 
